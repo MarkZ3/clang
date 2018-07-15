@@ -11,9 +11,12 @@
 #include "clang/Index/RecordingAction.h"
 #include "clang/Index/UnitIndexingAction.h"
 
+#include "ClangIndexRecordWriter.h"
 #include "FileIndexData.h"
+#include "IndexDataStoreUtils.h"
 #include "IndexingContext.h"
 #include "UnitIndexDataRecorder.h"
+
 #include "clang/Basic/FileManager.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendAction.h"
@@ -22,6 +25,7 @@
 #include "clang/Frontend/Utils.h"
 #include "clang/Index/IndexDataConsumer.h"
 #include "clang/Index/IndexDiagnostic.h"
+#include "clang/Index/IndexUnitWriter.h"
 #include "clang/Index/UnitIndexDataConsumer.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Serialization/ASTReader.h"
@@ -762,6 +766,10 @@ std::unique_ptr<FrontendAction> index::createIndexDataRecordingAction(
   auto ConsumerFactory =
       [RecordOpts](
           UnitDetails UnitInfo) -> std::unique_ptr<UnitIndexDataConsumer> {
+    auto Failed = UnitIndexDataRecorder::initStore(
+        RecordOpts.DataDirPath, UnitInfo.CI.getDiagnostics());
+    if (Failed)
+      return nullptr;
     return llvm::make_unique<UnitIndexDataRecorder>(std::move(UnitInfo),
                                                     RecordOpts);
   };

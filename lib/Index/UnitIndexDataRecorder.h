@@ -10,12 +10,15 @@
 #ifndef LLVM_CLANG_LIB_INDEX_UNITINDEXDATARECORDER_H
 #define LLVM_CLANG_LIB_INDEX_UNITINDEXDATARECORDER_H
 
+#include "ClangIndexRecordWriter.h"
+
+#include "clang/Index/IndexUnitWriter.h"
 #include "clang/Index/RecordingAction.h"
 #include "clang/Index/UnitIndexDataConsumer.h"
+#include "clang/Lex/HeaderSearch.h"
 
 namespace clang {
 class DiagnosticsEngine;
-class FrontendOptions;
 
 namespace index {
 
@@ -24,8 +27,19 @@ namespace index {
 class UnitIndexDataRecorder : public UnitIndexDataConsumer {
 protected:
   UnitDetails UnitInfo;
+  const CompilerInstance &CI;
+  HeaderSearch &HS;
+  DiagnosticsEngine &Diag;
+  IndexUnitWriter UnitWriter;
+  ClangIndexRecordWriter RecordWriter;
 
 public:
+  /// Intializes the index store at the provided path. Reports a diagnostic on
+  /// failure.
+  ///
+  /// \returns true if store initialization failed.
+  static bool initStore(StringRef StorePath, DiagnosticsEngine &Diag);
+
   UnitIndexDataRecorder(UnitDetails UnitInfo, RecordingOptions RecordOpts);
 
   void handleFileDependency(const FileEntry *FE, bool IsSystem) override;
@@ -44,6 +58,13 @@ public:
                              bool IsSystem) override;
 
   void finish() override;
+
+protected:
+  Module *findModuleForHeader(const FileEntry *FE);
+
+  // Initialization helper
+  static IndexUnitWriter getUnitWriter(StringRef StorePath,
+                                       const UnitDetails &UnitInfo);
 };
 
 } // end namespace index

@@ -37,8 +37,6 @@ getRecordingOptionsFromFrontendOptions(const FrontendOptions &FEOpts);
 /// and decl ocurrence information for the translation unit and persists it to
 /// an index store.
 ///
-/// FIXME: Not implemented yet.
-///
 /// \param WrappedAction another frontend action to wrap over or null.
 std::unique_ptr<FrontendAction>
 createIndexDataRecordingAction(RecordingOptions RecordOpts,
@@ -47,8 +45,6 @@ createIndexDataRecordingAction(RecordingOptions RecordOpts,
 /// Collects dependency, file inclusion and decl occurrence information for a
 /// \c ModuleFile and persists it to an index store. Does \b not check if
 /// the store already has up-to-date information for the provided module file.
-///
-/// FIXME: Not implemented yet.
 void recordIndexDataForModuleFile(serialization::ModuleFile *ModFile,
                                   RecordingOptions RecordOpts,
                                   const CompilerInstance &CI);
