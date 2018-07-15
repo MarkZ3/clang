@@ -23,6 +23,7 @@
 #include "clang/Frontend/FrontendDiagnostic.h"
 #include "clang/Frontend/FrontendPluginRegistry.h"
 #include "clang/Frontend/Utils.h"
+#include "clang/Index/RecordingAction.h"
 #include "clang/Rewrite/Frontend/FrontendActions.h"
 #include "clang/StaticAnalyzer/Frontend/FrontendActions.h"
 #include "llvm/Option/OptTable.h"
@@ -168,6 +169,22 @@ CreateFrontendAction(CompilerInstance &CI) {
     }
   }
 #endif
+
+  if (!FEOpts.IndexStorePath.empty()) {
+    auto WrapWithIndexRecordAction =
+        [&](const FrontendOptions &opts,
+            std::unique_ptr<FrontendAction> WrappedAction) {
+          auto RecordOpts =
+              index::getRecordingOptionsFromFrontendOptions(FEOpts);
+          return index::createIndexDataRecordingAction(
+              RecordOpts, std::move(WrappedAction));
+        };
+
+    // Wrap the main action as well as any GenerateModuleActions created while
+    // loading modules
+    Act = WrapWithIndexRecordAction(FEOpts, std::move(Act));
+    CI.setGenModuleActionWrapper(WrapWithIndexRecordAction);
+  }
 
   // If there are any AST files to merge, create a frontend action
   // adaptor to perform the merge.

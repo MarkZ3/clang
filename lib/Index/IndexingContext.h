@@ -11,9 +11,11 @@
 #define LLVM_CLANG_LIB_INDEX_INDEXINGCONTEXT_H
 
 #include "clang/Basic/LLVM.h"
+#include "clang/Basic/SourceLocation.h"
 #include "clang/Index/IndexSymbol.h"
 #include "clang/Index/IndexingAction.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/DenseMap.h"
 
 namespace clang {
   class ASTContext;
@@ -29,24 +31,50 @@ namespace clang {
   class Stmt;
   class Expr;
   class TypeLoc;
-  class SourceLocation;
+  class DirectoryEntry;
 
 namespace index {
   class IndexDataConsumer;
 
+/// Tracks the current system root path and computes and caches whether a
+/// file is considered a system file or not
+class SystemFileCache {
+  std::string SysrootPath;
+  // Records whether a directory entry is system or not.
+  llvm::DenseMap<const DirectoryEntry *, bool> DirEntries;
+  // Keeps track of the last check for whether a FileID is system or
+  // not. This is used to speed up isSystemFile() call.
+  std::pair<FileID, bool> LastFileCheck;
+
+public:
+  SystemFileCache() = default;
+  SystemFileCache(std::string SysrootPath);
+
+  void setSysrootPath(StringRef path);
+  StringRef getSysrootPath() const { return SysrootPath; }
+  bool isSystem(FileID FID, SourceManager &SM);
+};
+
+/// Generates and reports indexing data to the provided \c IndexDataConsumer
+/// for any AST nodes passed to its various \c index* methods.
 class IndexingContext {
   IndexingOptions IndexOpts;
+  SystemFileCache SystemCache;
   IndexDataConsumer &DataConsumer;
   ASTContext *Ctx = nullptr;
 
 public:
   IndexingContext(IndexingOptions IndexOpts, IndexDataConsumer &DataConsumer)
-    : IndexOpts(IndexOpts), DataConsumer(DataConsumer) {}
+      : IndexOpts(IndexOpts), DataConsumer(DataConsumer) {}
 
   const IndexingOptions &getIndexOpts() const { return IndexOpts; }
+  SystemFileCache &getSystemCache() { return SystemCache; }
   IndexDataConsumer &getDataConsumer() { return DataConsumer; }
 
   void setASTContext(ASTContext &ctx) { Ctx = &ctx; }
+
+  void setSysrootPath(StringRef path) { SystemCache.setSysrootPath(path); }
+  StringRef getSysrootPath() const { return SystemCache.getSysrootPath(); }
 
   bool shouldIndex(const Decl *D);
 

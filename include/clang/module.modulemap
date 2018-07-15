@@ -69,6 +69,7 @@ module Clang_Diagnostics {
   module Comment { header "AST/CommentDiagnostic.h" export * }
   module Driver { header "Driver/DriverDiagnostic.h" export * }
   module Frontend { header "Frontend/FrontendDiagnostic.h" export * }
+  module Index { header "Index/IndexDiagnostic.h" export * }
   module Lex { header "Lex/LexDiagnostic.h" export * }
   module Parse { header "Parse/ParseDiagnostic.h" export * }
   module Sema { header "Sema/SemaDiagnostic.h" export * }

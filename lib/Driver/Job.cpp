@@ -72,6 +72,8 @@ static bool skipArgs(const char *Flag, bool HaveCrashVFS, int &SkipNum,
     .Default(false);
   if (IsInclude)
     return !HaveCrashVFS;
+  if (StringRef(Flag).startswith("-index-store-path"))
+    return true;
 
   // The remaining flags are treated as a single argument.
 
@@ -211,6 +213,18 @@ rewriteIncludes(const llvm::ArrayRef<const char *> &Args, size_t Idx,
   IncFlags.push_back(std::move(NewInc));
 }
 
+/// Returns a path to a directory named \c DirName adjacent to the module
+/// cache directory:
+///  <...>.cache/vfs/<DirName>
+static llvm::SmallString<128>
+getDirAdjacentToModCache(StringRef DirName, CrashReportInfo *CrashInfo) {
+  llvm::SmallString<128> RelModCacheDir = llvm::sys::path::parent_path(
+      llvm::sys::path::parent_path(CrashInfo->VFSPath));
+  llvm::sys::path::append(RelModCacheDir, DirName);
+
+  return RelModCacheDir;
+}
+
 void Command::Print(raw_ostream &OS, const char *Terminator, bool Quote,
                     CrashReportInfo *CrashInfo) const {
   // Always quote the exe.
@@ -225,6 +239,7 @@ void Command::Print(raw_ostream &OS, const char *Terminator, bool Quote,
   }
 
   bool HaveCrashVFS = CrashInfo && !CrashInfo->VFSPath.empty();
+  bool HaveIndexStorePath = CrashInfo && !CrashInfo->IndexStorePath.empty();
   for (size_t i = 0, e = Args.size(); i < e; ++i) {
     const char *const Arg = Args[i];
 
@@ -272,20 +287,32 @@ void Command::Print(raw_ostream &OS, const char *Terminator, bool Quote,
     OS << ' ';
     printArg(OS, CrashInfo->VFSPath.str(), Quote);
 
-    // The leftover modules from the crash are stored in
-    //  <name>.cache/vfs/modules
-    // Leave it untouched for pcm inspection and provide a clean/empty dir
-    // path to contain the future generated module cache:
-    //  <name>.cache/vfs/repro-modules
-    SmallString<128> RelModCacheDir = llvm::sys::path::parent_path(
-        llvm::sys::path::parent_path(CrashInfo->VFSPath));
-    llvm::sys::path::append(RelModCacheDir, "repro-modules");
+    // Provide an empty dir path for the future generated module cache to
+    // leave the leftover modules from the crash untouched for pcm inspection
+    SmallString<128> RelModCacheDir =
+        getDirAdjacentToModCache("repro-modules", CrashInfo);
 
     std::string ModCachePath = "-fmodules-cache-path=";
     ModCachePath.append(RelModCacheDir.c_str());
 
     OS << ' ';
     printArg(OS, ModCachePath, Quote);
+  }
+
+  if (CrashInfo && HaveIndexStorePath) {
+    SmallString<128> IndexStoreDir;
+
+    if (HaveCrashVFS) {
+      // Provide a new index store, leaving the old one from the crash untouched
+      IndexStoreDir = getDirAdjacentToModCache("index-store", CrashInfo);
+    } else {
+      IndexStoreDir = "index-store";
+    }
+
+    OS << ' ';
+    printArg(OS, "-index-store-path", Quote);
+    OS << ' ';
+    printArg(OS, IndexStoreDir.c_str(), Quote);
   }
 
   if (ResponseFile != nullptr) {

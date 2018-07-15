@@ -21,6 +21,7 @@
 #include "clang/CrossTU/CrossTUDiagnostic.h"
 #include "clang/Driver/DriverDiagnostic.h"
 #include "clang/Frontend/FrontendDiagnostic.h"
+#include "clang/Index/IndexDiagnostic.h"
 #include "clang/Lex/LexDiagnostic.h"
 #include "clang/Parse/ParseDiagnostic.h"
 #include "clang/Sema/SemaDiagnostic.h"

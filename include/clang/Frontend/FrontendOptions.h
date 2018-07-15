@@ -374,6 +374,13 @@ public:
   std::string MTMigrateDir;
   std::string ARCMTMigrateReportOut;
 
+  /// The path to write index data to
+  std::string IndexStorePath;
+  /// Whether to ignore system files when writing out index data
+  unsigned IndexIgnoreSystemSymbols : 1;
+  /// Whether to include the codegen name of symbols in the index data
+  unsigned IndexRecordCodegenName : 1;
+
   /// The input files and their types.
   std::vector<FrontendInputFile> Inputs;
 
@@ -447,7 +454,8 @@ public:
         SkipFunctionBodies(false), UseGlobalModuleIndex(true),
         GenerateGlobalModuleIndex(true), ASTDumpDecls(false),
         ASTDumpLookups(false), BuildingImplicitModule(false),
-        ModulesEmbedAllFiles(false), IncludeTimestamps(true) {}
+        ModulesEmbedAllFiles(false), IncludeTimestamps(true),
+        IndexIgnoreSystemSymbols(false), IndexRecordCodegenName(false) {}
 
   /// getInputKindForExtension - Return the appropriate input kind for a file
   /// extension. For example, "c" would return InputKind::C.

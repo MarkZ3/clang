@@ -8,20 +8,75 @@
 //===----------------------------------------------------------------------===//
 
 #include "IndexingContext.h"
-#include "clang/Index/IndexDataConsumer.h"
 #include "clang/AST/ASTContext.h"
-#include "clang/AST/DeclTemplate.h"
 #include "clang/AST/DeclObjC.h"
+#include "clang/AST/DeclTemplate.h"
 #include "clang/Basic/SourceManager.h"
+#include "clang/Index/IndexDataConsumer.h"
+#include "llvm/Support/Path.h"
 
 using namespace clang;
 using namespace index;
+using namespace llvm;
 
 static bool isGeneratedDecl(const Decl *D) {
   if (auto *attr = D->getAttr<ExternalSourceSymbolAttr>()) {
     return attr->getGeneratedDeclaration();
   }
   return false;
+}
+
+void SystemFileCache::setSysrootPath(llvm::StringRef Path) {
+  // Ignore sysroot path if it points to root, otherwise every header will be
+  // treated as system one.
+  SysrootPath = sys::path::root_path(Path) == Path ? StringRef() : Path;
+
+  // Invalidate existing results
+  LastFileCheck = {FileID(), false};
+  DirEntries.clear();
+}
+
+SystemFileCache::SystemFileCache(std::string Path) { setSysrootPath(Path); }
+
+bool SystemFileCache::isSystem(clang::FileID FID, clang::SourceManager &SM) {
+  if (LastFileCheck.first == FID)
+    return LastFileCheck.second;
+
+  auto Result = [&](bool Res) -> bool {
+    LastFileCheck = {FID, Res};
+    return Res;
+  };
+
+  bool Invalid = false;
+  const SrcMgr::SLocEntry &SEntry = SM.getSLocEntry(FID, &Invalid);
+  if (Invalid || !SEntry.isFile())
+    return Result(false);
+
+  const SrcMgr::FileInfo &FI = SEntry.getFile();
+  if (FI.getFileCharacteristic() != SrcMgr::C_User)
+    return Result(true);
+
+  auto *CC = FI.getContentCache();
+  if (!CC)
+    return Result(false);
+  auto *FE = CC->OrigEntry;
+  if (!FE)
+    return Result(false);
+
+  if (SysrootPath.empty())
+    return Result(false);
+
+  // Check if directory is in sysroot so that we can consider system headers
+  // even the headers found via a user framework search path, pointing inside
+  // sysroot.
+  auto DirEntry = FE->getDir();
+  auto Pair = DirEntries.insert(std::make_pair(DirEntry, false));
+  bool &IsSystemDir = Pair.first->second;
+  bool WasInserted = Pair.second;
+  if (WasInserted) {
+    IsSystemDir = StringRef(DirEntry->getName()).startswith(SysrootPath);
+  }
+  return Result(IsSystemDir);
 }
 
 bool IndexingContext::shouldIndex(const Decl *D) {
@@ -88,12 +143,8 @@ bool IndexingContext::importedModule(const ImportDecl *ImportD) {
   if (FID.isInvalid())
     return true;
 
-  bool Invalid = false;
-  const SrcMgr::SLocEntry &SEntry = SM.getSLocEntry(FID, &Invalid);
-  if (Invalid || !SEntry.isFile())
-    return true;
-
-  if (SEntry.getFile().getFileCharacteristic() != SrcMgr::C_User) {
+  bool IsInSystemFile = SystemCache.isSystem(FID, SM);
+  if (IsInSystemFile) {
     switch (IndexOpts.SystemSymbolFilter) {
     case IndexingOptions::SystemSymbolFilterKind::None:
       return true;
@@ -107,7 +158,8 @@ bool IndexingContext::importedModule(const ImportDecl *ImportD) {
   if (ImportD->isImplicit())
     Roles |= (unsigned)SymbolRole::Implicit;
 
-  return DataConsumer.handleModuleOccurence(ImportD, Roles, Loc);
+  return DataConsumer.handleModuleOccurence(ImportD, Roles, Loc,
+                                            IsInSystemFile);
 }
 
 bool IndexingContext::isTemplateImplicitInstantiation(const Decl *D) {
@@ -200,7 +252,8 @@ static const Decl *adjustTemplateImplicitInstantiation(const Decl *D) {
   return nullptr;
 }
 
-static bool isDeclADefinition(const Decl *D, const DeclContext *ContainerDC, ASTContext &Ctx) {
+static bool isDeclADefinition(const Decl *D, const DeclContext *ContainerDC,
+                              ASTContext &Ctx) {
   if (auto VD = dyn_cast<VarDecl>(D))
     return VD->isThisDeclarationADefinition(Ctx);
 
@@ -316,7 +369,7 @@ bool IndexingContext::handleDeclOccurrence(const Decl *D, SourceLocation Loc,
                                            const Expr *OrigE,
                                            const Decl *OrigD,
                                            const DeclContext *ContainerDC) {
-  if (D->isImplicit() && !isa<ObjCMethodDecl>(D))
+  if (D->isImplicit() && !(isa<ObjCMethodDecl>(D) || isa<ObjCIvarDecl>(D)))
     return true;
   if (!isa<NamedDecl>(D) || shouldSkipNamelessDecl(cast<NamedDecl>(D)))
     return true;
@@ -326,12 +379,8 @@ bool IndexingContext::handleDeclOccurrence(const Decl *D, SourceLocation Loc,
   if (FID.isInvalid())
     return true;
 
-  bool Invalid = false;
-  const SrcMgr::SLocEntry &SEntry = SM.getSLocEntry(FID, &Invalid);
-  if (Invalid || !SEntry.isFile())
-    return true;
-
-  if (SEntry.getFile().getFileCharacteristic() != SrcMgr::C_User) {
+  bool IsInSystemFile = SystemCache.isSystem(FID, SM);
+  if (IsInSystemFile) {
     switch (IndexOpts.SystemSymbolFilter) {
     case IndexingOptions::SystemSymbolFilterKind::None:
       return true;
@@ -404,5 +453,6 @@ bool IndexingContext::handleDeclOccurrence(const Decl *D, SourceLocation Loc,
   }
 
   IndexDataConsumer::ASTNodeInfo Node{OrigE, OrigD, Parent, ContainerDC};
-  return DataConsumer.handleDeclOccurence(D, Roles, FinalRelations, Loc, Node);
+  return DataConsumer.handleDeclOccurence(D, Roles, FinalRelations, Loc,
+                                          IsInSystemFile, Node);
 }

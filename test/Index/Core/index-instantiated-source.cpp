@@ -1,4 +1,5 @@
 // RUN: c-index-test core -print-source-symbols -- %s -std=c++14 -target x86_64-apple-macosx10.7 | FileCheck %s
+// RUN: c-index-test core -print-source-unit -- %s -std=c++14 -target x86_64-apple-macosx10.7 | FileCheck %s
 // References to declarations in instantiations should be canonicalized:
 
 template<typename T>

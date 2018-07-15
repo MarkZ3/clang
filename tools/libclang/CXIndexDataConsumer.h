@@ -465,11 +465,12 @@ public:
 private:
   bool handleDeclOccurence(const Decl *D, index::SymbolRoleSet Roles,
                            ArrayRef<index::SymbolRelation> Relations,
-                           SourceLocation Loc, ASTNodeInfo ASTNode) override;
+                           SourceLocation Loc, bool IsInSystemFile,
+                           ASTNodeInfo ASTNode) override;
 
   bool handleModuleOccurence(const ImportDecl *ImportD,
-                             index::SymbolRoleSet Roles,
-                             SourceLocation Loc) override;
+                             index::SymbolRoleSet Roles, SourceLocation Loc,
+                             bool IsInSystemFile) override;
 
   void finish() override;
 

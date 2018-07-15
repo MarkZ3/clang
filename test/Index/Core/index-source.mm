@@ -1,4 +1,5 @@
 // RUN: c-index-test core -print-source-symbols -- %s -target x86_64-apple-macosx10.7 | FileCheck %s
+// RUN: c-index-test core -print-source-unit -- %s -target x86_64-apple-macosx10.7 | FileCheck -check-prefixes=CHECK %s
 
 @interface MyCls
 @end

@@ -1,4 +1,4 @@
-//===--- IndexingAction.h - Frontend index action -------------------------===//
+//===--- IndexingAction.h - Frontend AST indexing action ------------------===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -13,6 +13,7 @@
 #include "clang/Basic/LLVM.h"
 #include "llvm/ADT/ArrayRef.h"
 #include <memory>
+#include <string>
 
 namespace clang {
   class ASTContext;
@@ -35,11 +36,14 @@ struct IndexingOptions {
     All,
   };
 
-  SystemSymbolFilterKind SystemSymbolFilter
-    = SystemSymbolFilterKind::DeclarationsOnly;
+  SystemSymbolFilterKind SystemSymbolFilter =
+      SystemSymbolFilterKind::DeclarationsOnly;
   bool IndexFunctionLocals = false;
 };
 
+/// Creates a frontend action that provides decl occurrence information from the
+/// AST to the given \c IndexDataConsumer.
+///
 /// \param WrappedAction another frontend action to wrap over or null.
 std::unique_ptr<FrontendAction>
 createIndexingAction(std::shared_ptr<IndexDataConsumer> DataConsumer,

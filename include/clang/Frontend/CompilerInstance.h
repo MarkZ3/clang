@@ -186,6 +186,14 @@ class CompilerInstance : public ModuleLoader {
   /// Force an output buffer.
   std::unique_ptr<llvm::raw_pwrite_stream> OutputStream;
 
+  typedef std::function<std::unique_ptr<FrontendAction>(
+      const FrontendOptions &Opts, std::unique_ptr<FrontendAction> Action)>
+      ActionWrapperTy;
+
+  /// \brief An optional callback function used to wrap any
+  /// GenerateModuleActions created and executed when loading modules.
+  ActionWrapperTy GenModuleActionWrapper;
+
   CompilerInstance(const CompilerInstance &) = delete;
   void operator=(const CompilerInstance &) = delete;
 public:
@@ -450,7 +458,7 @@ public:
     return *PP;
   }
 
-  std::shared_ptr<Preprocessor> getPreprocessorPtr() { return PP; }
+  std::shared_ptr<Preprocessor> getPreprocessorPtr() const { return PP; }
 
   void resetAndLeakPreprocessor() {
     BuryPointer(new std::shared_ptr<Preprocessor>(PP));
@@ -806,6 +814,14 @@ public:
   GlobalModuleIndex *loadGlobalModuleIndex(SourceLocation TriggerLoc) override;
 
   bool lookupMissingImports(StringRef Name, SourceLocation TriggerLoc) override;
+
+  void setGenModuleActionWrapper(ActionWrapperTy Wrapper) {
+    GenModuleActionWrapper = Wrapper;
+  };
+
+  ActionWrapperTy getGenModuleActionWrapper() const {
+    return GenModuleActionWrapper;
+  }
 
   void addDependencyCollector(std::shared_ptr<DependencyCollector> Listener) {
     DependencyCollectors.push_back(std::move(Listener));

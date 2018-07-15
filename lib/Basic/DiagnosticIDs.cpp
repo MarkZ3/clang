@@ -89,6 +89,7 @@ VALIDATE_DIAG_SIZE(COMMENT)
 VALIDATE_DIAG_SIZE(SEMA)
 VALIDATE_DIAG_SIZE(ANALYSIS)
 VALIDATE_DIAG_SIZE(REFACTORING)
+VALIDATE_DIAG_SIZE(INDEX)
 #undef VALIDATE_DIAG_SIZE
 #undef STRINGIFY_NAME
 
@@ -114,6 +115,7 @@ static const StaticDiagInfoRec StaticDiagInfo[] = {
 #include "clang/Basic/DiagnosticSemaKinds.inc"
 #include "clang/Basic/DiagnosticAnalysisKinds.inc"
 #include "clang/Basic/DiagnosticRefactoringKinds.inc"
+#include "clang/Basic/DiagnosticIndexKinds.inc"
 #undef DIAG
 };
 
@@ -153,6 +155,7 @@ CATEGORY(CROSSTU, COMMENT)
 CATEGORY(SEMA, CROSSTU)
 CATEGORY(ANALYSIS, SEMA)
 CATEGORY(REFACTORING, ANALYSIS)
+CATEGORY(INDEX, REFACTORING)
 #undef CATEGORY
 
   // Avoid out of bounds reads.

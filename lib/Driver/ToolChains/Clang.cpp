@@ -3665,6 +3665,18 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
 
   RenderARCMigrateToolOptions(D, Args, CmdArgs);
 
+  if (Args.hasArg(options::OPT_index_store_path)) {
+    Args.AddLastArg(CmdArgs, options::OPT_index_store_path);
+    Args.AddLastArg(CmdArgs, options::OPT_index_ignore_system_symbols);
+    Args.AddLastArg(CmdArgs, options::OPT_index_record_codegen_name);
+
+    // If '-o' is passed along with '-fsyntax-only' pass it along the cc1
+    // invocation so that the index action knows what the out file is.
+    if (isa<CompileJobAction>(JA) && JA.getType() == types::TY_Nothing) {
+      Args.AddLastArg(CmdArgs, options::OPT_o);
+    }
+  }
+
   // Add preprocessing options like -I, -D, etc. if we are using the
   // preprocessor.
   //

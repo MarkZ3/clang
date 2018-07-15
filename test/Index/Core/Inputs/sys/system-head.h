@@ -1,3 +1,20 @@
+// UNIT: index-system.mm.o
+// UNIT: is-system: 0
+// UNIT: is-module: 0
+// UNIT: has-main: 1
+// UNIT: main-path: {{.*}}index-system.mm
+// UNIT: out-file: {{.*}}index-system.mm.o
+// UNIT: is-debug: 1
+
+// UNIT: DEPEND START
+// UNIT: File | user | {{.*}}index-system.mm
+// UNIT: File | system | {{.*}}system-head.h
+// UNIT: DEPEND END (2)
+
+// UNIT: INCLUDE START
+// UNIT: {{.*}}index-system.mm:4 -> {{.*}}system-head.h
+// UNIT: INCLUDE END (1)
+
 // CHECK: [[@LINE+1]]:12 | class/ObjC | Base | [[Base_USR:.*]] | {{.*}} | Decl | rel: 0
 @interface Base
 @end

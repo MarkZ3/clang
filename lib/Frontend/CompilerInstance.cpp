@@ -29,6 +29,7 @@
 #include "clang/Frontend/TextDiagnosticPrinter.h"
 #include "clang/Frontend/Utils.h"
 #include "clang/Frontend/VerifyDiagnosticConsumer.h"
+#include "clang/Index/IndexingAction.h"
 #include "clang/Lex/HeaderSearch.h"
 #include "clang/Lex/PTHManager.h"
 #include "clang/Lex/Preprocessor.h"
@@ -1122,6 +1123,10 @@ compileModuleImpl(CompilerInstance &ImportingInstance, SourceLocation ImportLoc,
   SourceMgr.pushModuleBuildStack(ModuleName,
     FullSourceLoc(ImportLoc, ImportingInstance.getSourceManager()));
 
+  // Pass along the GenModuleActionWrapper callback
+  auto WrapGenModuleAction = ImportingInstance.getGenModuleActionWrapper();
+  Instance.setGenModuleActionWrapper(WrapGenModuleAction);
+
   // If we're collecting module dependencies, we need to share a collector
   // between all of the module CompilerInstances. Other than that, we don't
   // want to produce any dependency output from the module build.
@@ -1139,8 +1144,11 @@ compileModuleImpl(CompilerInstance &ImportingInstance, SourceLocation ImportLoc,
   llvm::CrashRecoveryContext CRC;
   CRC.RunSafelyOnThread(
       [&]() {
-        GenerateModuleFromModuleMapAction Action;
-        Instance.ExecuteAction(Action);
+        std::unique_ptr<FrontendAction> Action(
+            new GenerateModuleFromModuleMapAction);
+        if (WrapGenModuleAction)
+          Action = WrapGenModuleAction(FrontendOpts, std::move(Action));
+        Instance.ExecuteAction(*Action);
       },
       DesiredStackSize);
 
