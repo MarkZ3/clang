@@ -47,7 +47,127 @@
 #define INDEXSTORE_END_DECLS
 #endif
 
+#ifndef INDEXSTORE_PUBLIC
+#if defined(_MSC_VER)
+#define INDEXSTORE_PUBLIC __declspec(dllimport)
+#else
+#define INDEXSTORE_PUBLIC
+#endif
+#endif
+
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+
+#if __has_feature(blocks)
+#define INDEXSTORE_HAS_BLOCKS 1
+#else
+#define INDEXSTORE_HAS_BLOCKS 0
+#endif
+
 INDEXSTORE_BEGIN_DECLS
+
+typedef void *indexstore_error_t;
+
+INDEXSTORE_PUBLIC const char *
+indexstore_error_get_description(indexstore_error_t error);
+
+INDEXSTORE_PUBLIC void indexstore_error_dispose(indexstore_error_t error);
+
+typedef struct {
+  const char *data;
+  size_t length;
+} indexstore_string_ref_t;
+
+INDEXSTORE_PUBLIC unsigned indexstore_format_version(void);
+
+typedef void *indexstore_t;
+
+INDEXSTORE_PUBLIC indexstore_t
+indexstore_store_create(const char *store_path, indexstore_error_t *error);
+
+INDEXSTORE_PUBLIC void indexstore_store_dispose(indexstore_t store);
+
+#if INDEXSTORE_HAS_BLOCKS
+INDEXSTORE_PUBLIC bool indexstore_store_units_apply(
+    indexstore_t, unsigned sorted,
+    bool (^applier)(indexstore_string_ref_t unit_name));
+#endif
+
+typedef void *indexstore_unit_event_notification_t;
+typedef void *indexstore_unit_event_t;
+
+INDEXSTORE_PUBLIC size_t indexstore_unit_event_notification_get_events_count(
+    indexstore_unit_event_notification_t notification);
+
+INDEXSTORE_PUBLIC indexstore_unit_event_t
+indexstore_unit_event_notification_get_event(
+    indexstore_unit_event_notification_t notification, size_t index);
+
+INDEXSTORE_PUBLIC bool indexstore_unit_event_notification_is_initial(
+    indexstore_unit_event_notification_t notification);
+
+typedef enum {
+  INDEXSTORE_UNIT_EVENT_ADDED = 1,
+  INDEXSTORE_UNIT_EVENT_REMOVED = 2,
+  INDEXSTORE_UNIT_EVENT_MODIFIED = 3,
+  INDEXSTORE_UNIT_EVENT_DIRECTORY_DELETED = 4,
+} indexstore_unit_event_kind_t;
+
+INDEXSTORE_PUBLIC indexstore_unit_event_kind_t
+indexstore_unit_event_get_kind(indexstore_unit_event_t event);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_unit_event_get_unit_name(indexstore_unit_event_t event);
+
+INDEXSTORE_PUBLIC timespec
+indexstore_unit_event_get_modification_time(indexstore_unit_event_t event);
+
+#if INDEXSTORE_HAS_BLOCKS
+typedef void (^indexstore_unit_event_handler_t)(
+    indexstore_unit_event_notification_t);
+
+INDEXSTORE_PUBLIC void indexstore_store_set_unit_event_handler(
+    indexstore_t store, indexstore_unit_event_handler_t handler);
+#endif
+
+typedef struct {
+  /// If true, \c indexstore_store_start_unit_event_listening will block until
+  /// the initial set of units is passed to the unit event handler, otherwise
+  /// the function will return and the initial set will be passed
+  /// asynchronously.
+  bool wait_initial_sync;
+} indexstore_unit_event_listen_options_t;
+
+INDEXSTORE_PUBLIC bool indexstore_store_start_unit_event_listening(
+    indexstore_t store, indexstore_unit_event_listen_options_t *options,
+    size_t listen_options_struct_size, indexstore_error_t *error);
+
+INDEXSTORE_PUBLIC void
+indexstore_store_stop_unit_event_listening(indexstore_t store);
+
+INDEXSTORE_PUBLIC void indexstore_store_discard_unit(indexstore_t store,
+                                                     const char *unit_name);
+
+INDEXSTORE_PUBLIC void indexstore_store_discard_record(indexstore_t store,
+                                                       const char *record_name);
+
+INDEXSTORE_PUBLIC void indexstore_store_purge_stale_data(indexstore_t store);
+
+/// Determines the unit name from the \c output_path and writes it out in the
+/// \c name_buf buffer. It doesn't write more than \c buf_size.
+/// \returns the length of the name. If this is larger than \c buf_size, the
+/// caller should call the function again with a buffer of the appropriate size.
+INDEXSTORE_PUBLIC size_t indexstore_store_get_unit_name_from_output_path(
+    indexstore_t store, const char *output_path, char *name_buf,
+    size_t buf_size);
+
+/// \returns true if an error occurred, false otherwise.
+INDEXSTORE_PUBLIC bool indexstore_store_get_unit_modification_time(
+    indexstore_t store, const char *unit_name, int64_t *seconds,
+    int64_t *nanoseconds, indexstore_error_t *error);
+
+typedef void *indexstore_symbol_t;
 
 typedef enum {
   INDEXSTORE_SYMBOL_KIND_UNKNOWN = 0,
@@ -133,6 +253,201 @@ typedef enum {
   INDEXSTORE_SYMBOL_ROLE_REL_IBTYPEOF = 1 << 17,
   INDEXSTORE_SYMBOL_ROLE_REL_SPECIALIZATIONOF = 1 << 18,
 } indexstore_symbol_role_t;
+
+INDEXSTORE_PUBLIC indexstore_symbol_language_t
+indexstore_symbol_get_language(indexstore_symbol_t symbol);
+
+INDEXSTORE_PUBLIC indexstore_symbol_kind_t
+indexstore_symbol_get_kind(indexstore_symbol_t symbol);
+
+INDEXSTORE_PUBLIC indexstore_symbol_subkind_t
+indexstore_symbol_get_subkind(indexstore_symbol_t symbol);
+
+INDEXSTORE_PUBLIC uint64_t
+indexstore_symbol_get_properties(indexstore_symbol_t symbol);
+
+INDEXSTORE_PUBLIC uint64_t
+indexstore_symbol_get_roles(indexstore_symbol_t symbol);
+
+INDEXSTORE_PUBLIC uint64_t
+indexstore_symbol_get_related_roles(indexstore_symbol_t symbol);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_symbol_get_name(indexstore_symbol_t symbol);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_symbol_get_usr(indexstore_symbol_t symbol);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_symbol_get_codegen_name(indexstore_symbol_t symbol);
+
+typedef void *indexstore_symbol_relation_t;
+
+INDEXSTORE_PUBLIC uint64_t
+indexstore_symbol_relation_get_roles(indexstore_symbol_relation_t relation);
+
+INDEXSTORE_PUBLIC indexstore_symbol_t
+indexstore_symbol_relation_get_symbol(indexstore_symbol_relation_t relation);
+
+typedef void *indexstore_occurrence_t;
+
+INDEXSTORE_PUBLIC indexstore_symbol_t
+indexstore_occurrence_get_symbol(indexstore_occurrence_t occur);
+
+#if INDEXSTORE_HAS_BLOCKS
+INDEXSTORE_PUBLIC bool indexstore_occurrence_relations_apply(
+    indexstore_occurrence_t occur,
+    bool (^applier)(indexstore_symbol_relation_t relation));
+#endif
+
+INDEXSTORE_PUBLIC uint64_t
+indexstore_occurrence_get_roles(indexstore_occurrence_t occur);
+
+INDEXSTORE_PUBLIC void
+indexstore_occurrence_get_line_col(indexstore_occurrence_t occur,
+                                   unsigned *line, unsigned *column);
+
+typedef void *indexstore_record_reader_t;
+
+INDEXSTORE_PUBLIC indexstore_record_reader_t indexstore_record_reader_create(
+    indexstore_t store, const char *record_name, indexstore_error_t *error);
+
+INDEXSTORE_PUBLIC void
+indexstore_record_reader_dispose(indexstore_record_reader_t reader);
+
+#if INDEXSTORE_HAS_BLOCKS
+/// Goes through the symbol data and passes symbols to \c receiver, for the
+/// symbol data that \c filter returns true on.
+///
+/// This allows allocating memory only for the record symbols that the caller is
+/// interested in.
+INDEXSTORE_PUBLIC bool indexstore_record_reader_search_symbols(
+    indexstore_record_reader_t reader,
+    bool (^filter)(indexstore_symbol_t symbol, bool *stop),
+    void (^receiver)(indexstore_symbol_t symbol));
+
+/// \param nocache if true, avoids allocating memory for the symbols.
+/// Useful when the caller does not intend to keep \c indexstore_record_reader_t
+/// for more queries.
+INDEXSTORE_PUBLIC bool indexstore_record_reader_symbols_apply(
+    indexstore_record_reader_t reader, bool nocache,
+    bool (^applier)(indexstore_symbol_t symbol));
+
+INDEXSTORE_PUBLIC bool indexstore_record_reader_occurrences_apply(
+    indexstore_record_reader_t reader,
+    bool (^applier)(indexstore_occurrence_t occur));
+
+INDEXSTORE_PUBLIC bool indexstore_record_reader_occurrences_in_line_range_apply(
+    indexstore_record_reader_t reader, unsigned line_start, unsigned line_count,
+    bool (^applier)(indexstore_occurrence_t occur));
+
+/// \param symbols if non-zero \c symbols_count, indicates the list of symbols
+/// that we want to get occurrences for. An empty array indicates that we want
+/// occurrences for all symbols.
+/// \param related_symbols Same as \c symbols but for related symbols.
+INDEXSTORE_PUBLIC bool indexstore_record_reader_occurrences_of_symbols_apply(
+    indexstore_record_reader_t reader, indexstore_symbol_t *symbols,
+    size_t symbols_count, indexstore_symbol_t *related_symbols,
+    size_t related_symbols_count,
+    bool (^applier)(indexstore_occurrence_t occur));
+#endif
+
+typedef void *indexstore_unit_reader_t;
+
+INDEXSTORE_PUBLIC indexstore_unit_reader_t indexstore_unit_reader_create(
+    indexstore_t store, const char *unit_name, indexstore_error_t *error);
+
+INDEXSTORE_PUBLIC void
+indexstore_unit_reader_dispose(indexstore_unit_reader_t reader);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_unit_reader_get_provider_identifier(indexstore_unit_reader_t reader);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_unit_reader_get_provider_version(indexstore_unit_reader_t reader);
+
+INDEXSTORE_PUBLIC void indexstore_unit_reader_get_modification_time(
+    indexstore_unit_reader_t reader, int64_t *seconds, int64_t *nanoseconds);
+
+INDEXSTORE_PUBLIC bool
+indexstore_unit_reader_is_system_unit(indexstore_unit_reader_t reader);
+
+INDEXSTORE_PUBLIC bool
+indexstore_unit_reader_is_module_unit(indexstore_unit_reader_t reader);
+
+INDEXSTORE_PUBLIC bool
+indexstore_unit_reader_is_debug_compilation(indexstore_unit_reader_t reader);
+
+INDEXSTORE_PUBLIC bool
+indexstore_unit_reader_has_main_file(indexstore_unit_reader_t reader);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_unit_reader_get_main_file(indexstore_unit_reader_t reader);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_unit_reader_get_module_name(indexstore_unit_reader_t reader);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_unit_reader_get_working_dir(indexstore_unit_reader_t reader);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_unit_reader_get_output_file(indexstore_unit_reader_t reader);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_unit_reader_get_sysroot_path(indexstore_unit_reader_t reader);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_unit_reader_get_target(indexstore_unit_reader_t reader);
+
+typedef void *indexstore_unit_dependency_t;
+typedef void *indexstore_unit_include_t;
+
+typedef enum {
+  INDEXSTORE_UNIT_DEPENDENCY_UNIT = 1,
+  INDEXSTORE_UNIT_DEPENDENCY_RECORD = 2,
+  INDEXSTORE_UNIT_DEPENDENCY_FILE = 3,
+} indexstore_unit_dependency_kind_t;
+
+INDEXSTORE_PUBLIC indexstore_unit_dependency_kind_t
+indexstore_unit_dependency_get_kind(indexstore_unit_dependency_t dep);
+
+INDEXSTORE_PUBLIC bool
+indexstore_unit_dependency_is_system(indexstore_unit_dependency_t dep);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_unit_dependency_get_filepath(indexstore_unit_dependency_t dep);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_unit_dependency_get_modulename(indexstore_unit_dependency_t dep);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_unit_dependency_get_name(indexstore_unit_dependency_t dep);
+
+INDEXSTORE_PUBLIC time_t indexstore_unit_dependency_get_modification_time(
+    indexstore_unit_dependency_t dep);
+
+INDEXSTORE_PUBLIC size_t
+indexstore_unit_dependency_get_file_size(indexstore_unit_dependency_t dep);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_unit_include_get_source_path(indexstore_unit_include_t dep);
+
+INDEXSTORE_PUBLIC indexstore_string_ref_t
+indexstore_unit_include_get_target_path(indexstore_unit_include_t dep);
+
+INDEXSTORE_PUBLIC unsigned
+indexstore_unit_include_get_source_line(indexstore_unit_include_t dep);
+
+#if INDEXSTORE_HAS_BLOCKS
+INDEXSTORE_PUBLIC bool indexstore_unit_reader_dependencies_apply(
+    indexstore_unit_reader_t reader,
+    bool (^applier)(indexstore_unit_dependency_t dep));
+
+INDEXSTORE_PUBLIC bool indexstore_unit_reader_includes_apply(
+    indexstore_unit_reader_t reader,
+    bool (^applier)(indexstore_unit_include_t include));
+
+#endif
 
 INDEXSTORE_END_DECLS
 

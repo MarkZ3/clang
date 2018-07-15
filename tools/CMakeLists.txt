@@ -10,6 +10,7 @@ add_clang_subdirectory(clang-import-test)
 add_clang_subdirectory(clang-offload-bundler)
 
 add_clang_subdirectory(c-index-test)
+add_clang_subdirectory(IndexStore)
 
 add_clang_subdirectory(clang-rename)
 add_clang_subdirectory(clang-refactor)

@@ -16,6 +16,25 @@
 namespace clang {
 namespace index {
 
+/// Map an indexstore_symbol_kind_t to a SymbolKind, handling unknown values.
+SymbolKind getSymbolKind(indexstore_symbol_kind_t K);
+
+/// Map an indexstore_symbol_subkind_t to a SymbolSubKind, handling unknown
+/// values.
+SymbolSubKind getSymbolSubKind(indexstore_symbol_subkind_t K);
+
+/// Map an indexstore_symbol_language_t to a SymbolLanguage, handling unknown
+/// values.
+SymbolLanguage getSymbolLanguage(indexstore_symbol_language_t L);
+
+/// Map an indexstore representation to a SymbolPropertySet, handling
+/// unknown values.
+SymbolPropertySet getSymbolProperties(uint64_t Props);
+
+/// Map an indexstore representation to a SymbolRoleSet, handling unknown
+/// values.
+SymbolRoleSet getSymbolRoles(uint64_t Roles);
+
 /// Map a SymbolKind to an indexstore_symbol_kind_t.
 indexstore_symbol_kind_t getIndexStoreKind(SymbolKind K);
 

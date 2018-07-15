@@ -168,18 +168,17 @@ hash_code IndexRecordHasher::hashOccurrences(ArrayRef<DeclOccurrence> Occurs) {
 hash_code IndexRecordHasher::hash(const Decl *D) {
   assert(D->isCanonicalDecl());
 
-  if (isa<TagDecl>(D) || isa<ObjCContainerDecl>(D)) {
+  if (isa<TagDecl>(D) || isa<ObjCContainerDecl>(D))
     return tryCache(D, D);
-  } else if (auto *NS = dyn_cast<NamespaceDecl>(D)) {
+  if (auto *NS = dyn_cast<NamespaceDecl>(D)) {
     if (NS->isAnonymousNamespace())
       return hash_value(StringRef("@aN"));
     return tryCache(D, D);
-  } else {
-    // There's a balance between caching results and not growing the cache too
-    // much. Measurements showed that avoiding caching all decls is beneficial
-    // particularly when including all of Cocoa.
-    return hashImpl(D);
   }
+  // There's a balance between caching results and not growing the cache too
+  // much. Measurements showed that avoiding caching all decls is beneficial
+  // particularly when including all of Cocoa.
+  return hashImpl(D);
 }
 
 hash_code IndexRecordHasher::hash(QualType NonCanTy) {
@@ -264,7 +263,6 @@ hash_code IndexRecordHasher::hash(CanQualType CT) {
     if (const ComplexType *CT = dyn_cast<ComplexType>(T)) {
       return COMBINE_HASH('<', hash(asCanon(CT->getElementType())));
     }
-
     break;
   }
 

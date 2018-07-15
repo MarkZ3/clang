@@ -40,6 +40,110 @@ void store::emitRecordID(unsigned ID, const char *Name, BitstreamWriter &Stream,
   Stream.EmitRecord(bitc::BLOCKINFO_CODE_SETRECORDNAME, Record);
 }
 
+SymbolKind index::getSymbolKind(indexstore_symbol_kind_t K) {
+  switch ((uint64_t)K) {
+  default:
+  case INDEXSTORE_SYMBOL_KIND_UNKNOWN:
+    return SymbolKind::Unknown;
+  case INDEXSTORE_SYMBOL_KIND_MODULE:
+    return SymbolKind::Module;
+  case INDEXSTORE_SYMBOL_KIND_NAMESPACE:
+    return SymbolKind::Namespace;
+  case INDEXSTORE_SYMBOL_KIND_NAMESPACEALIAS:
+    return SymbolKind::NamespaceAlias;
+  case INDEXSTORE_SYMBOL_KIND_MACRO:
+    return SymbolKind::Macro;
+  case INDEXSTORE_SYMBOL_KIND_ENUM:
+    return SymbolKind::Enum;
+  case INDEXSTORE_SYMBOL_KIND_STRUCT:
+    return SymbolKind::Struct;
+  case INDEXSTORE_SYMBOL_KIND_CLASS:
+    return SymbolKind::Class;
+  case INDEXSTORE_SYMBOL_KIND_PROTOCOL:
+    return SymbolKind::Protocol;
+  case INDEXSTORE_SYMBOL_KIND_EXTENSION:
+    return SymbolKind::Extension;
+  case INDEXSTORE_SYMBOL_KIND_UNION:
+    return SymbolKind::Union;
+  case INDEXSTORE_SYMBOL_KIND_TYPEALIAS:
+    return SymbolKind::TypeAlias;
+  case INDEXSTORE_SYMBOL_KIND_FUNCTION:
+    return SymbolKind::Function;
+  case INDEXSTORE_SYMBOL_KIND_VARIABLE:
+    return SymbolKind::Variable;
+  case INDEXSTORE_SYMBOL_KIND_FIELD:
+    return SymbolKind::Field;
+  case INDEXSTORE_SYMBOL_KIND_ENUMCONSTANT:
+    return SymbolKind::EnumConstant;
+  case INDEXSTORE_SYMBOL_KIND_INSTANCEMETHOD:
+    return SymbolKind::InstanceMethod;
+  case INDEXSTORE_SYMBOL_KIND_CLASSMETHOD:
+    return SymbolKind::ClassMethod;
+  case INDEXSTORE_SYMBOL_KIND_STATICMETHOD:
+    return SymbolKind::StaticMethod;
+  case INDEXSTORE_SYMBOL_KIND_INSTANCEPROPERTY:
+    return SymbolKind::InstanceProperty;
+  case INDEXSTORE_SYMBOL_KIND_CLASSPROPERTY:
+    return SymbolKind::ClassProperty;
+  case INDEXSTORE_SYMBOL_KIND_STATICPROPERTY:
+    return SymbolKind::StaticProperty;
+  case INDEXSTORE_SYMBOL_KIND_CONSTRUCTOR:
+    return SymbolKind::Constructor;
+  case INDEXSTORE_SYMBOL_KIND_DESTRUCTOR:
+    return SymbolKind::Destructor;
+  case INDEXSTORE_SYMBOL_KIND_CONVERSIONFUNCTION:
+    return SymbolKind::ConversionFunction;
+  case INDEXSTORE_SYMBOL_KIND_PARAMETER:
+    return SymbolKind::Parameter;
+  case INDEXSTORE_SYMBOL_KIND_USING:
+    return SymbolKind::Using;
+  }
+}
+
+SymbolSubKind index::getSymbolSubKind(indexstore_symbol_subkind_t K) {
+  switch ((uint64_t)K) {
+  default:
+  case INDEXSTORE_SYMBOL_SUBKIND_NONE:
+    return SymbolSubKind::None;
+  case INDEXSTORE_SYMBOL_SUBKIND_CXXCOPYCONSTRUCTOR:
+    return SymbolSubKind::CXXCopyConstructor;
+  case INDEXSTORE_SYMBOL_SUBKIND_CXXMOVECONSTRUCTOR:
+    return SymbolSubKind::CXXMoveConstructor;
+  case INDEXSTORE_SYMBOL_SUBKIND_ACCESSORGETTER:
+    return SymbolSubKind::AccessorGetter;
+  case INDEXSTORE_SYMBOL_SUBKIND_ACCESSORSETTER:
+    return SymbolSubKind::AccessorSetter;
+  case INDEXSTORE_SYMBOL_SUBKIND_USINGTYPENAME:
+    return SymbolSubKind::UsingTypename;
+  case INDEXSTORE_SYMBOL_SUBKIND_USINGVALUE:
+    return SymbolSubKind::UsingValue;
+  }
+}
+
+SymbolLanguage index::getSymbolLanguage(indexstore_symbol_language_t L) {
+  switch ((uint64_t)L) {
+  default: // FIXME: add an unknown language?
+  case INDEXSTORE_SYMBOL_LANG_C:
+    return SymbolLanguage::C;
+  case INDEXSTORE_SYMBOL_LANG_OBJC:
+    return SymbolLanguage::ObjC;
+  case INDEXSTORE_SYMBOL_LANG_CXX:
+    return SymbolLanguage::CXX;
+  case INDEXSTORE_SYMBOL_LANG_SWIFT:
+    return SymbolLanguage::Swift;
+  }
+}
+
+SymbolPropertySet index::getSymbolProperties(uint64_t Props) {
+  // FIXME: currently these enums must be kept in sync.
+  return (uint64_t)Props;
+}
+
+SymbolRoleSet index::getSymbolRoles(uint64_t Roles) {
+  // FIXME: currently these enums must be kept in sync.
+  return (uint64_t)Roles;
+}
+
 indexstore_symbol_kind_t index::getIndexStoreKind(SymbolKind K) {
   switch (K) {
   case SymbolKind::Unknown:

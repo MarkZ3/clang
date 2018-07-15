@@ -16,10 +16,12 @@ add_clang_library(clangIndex
   IndexingAction.cpp
   IndexingContext.cpp
   IndexRecordHasher.cpp
+  IndexRecordReader.cpp
   IndexRecordWriter.cpp
   IndexSymbol.cpp
   IndexTypeSourceInfo.cpp
   UnitIndexDataRecorder.cpp
+  IndexUnitReader.cpp
   IndexUnitWriter.cpp
   USRGeneration.cpp
 
