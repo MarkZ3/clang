@@ -14,6 +14,8 @@
 #ifndef LLVM_CLANG_C_INDEXSTORE_INDEXSTORE_H
 #define LLVM_CLANG_C_INDEXSTORE_INDEXSTORE_H
 
+#include "llvm/ADT/STLExtras.h"
+
 #include <ctime>
 #include <stddef.h>
 #include <stdint.h>
@@ -49,7 +51,11 @@
 
 #ifndef INDEXSTORE_PUBLIC
 #if defined(_MSC_VER)
-#define INDEXSTORE_PUBLIC __declspec(dllimport)
+#ifdef _INDEXSTORE_LIB_
+  #define INDEXSTORE_PUBLIC __declspec(dllexport)
+#else
+  #define INDEXSTORE_PUBLIC __declspec(dllimport)
+#endif
 #else
 #define INDEXSTORE_PUBLIC
 #endif
@@ -88,10 +94,12 @@ indexstore_store_create(const char *store_path, indexstore_error_t *error);
 
 INDEXSTORE_PUBLIC void indexstore_store_dispose(indexstore_t store);
 
-#if INDEXSTORE_HAS_BLOCKS
 INDEXSTORE_PUBLIC bool indexstore_store_units_apply(
     indexstore_t, unsigned sorted,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^applier)(indexstore_string_ref_t unit_name));
+#else
+    llvm::function_ref<bool(indexstore_string_ref_t)> applier);
 #endif
 
 typedef void *indexstore_unit_event_notification_t;
@@ -129,6 +137,13 @@ typedef void (^indexstore_unit_event_handler_t)(
 
 INDEXSTORE_PUBLIC void indexstore_store_set_unit_event_handler(
     indexstore_t store, indexstore_unit_event_handler_t handler);
+#else
+typedef std::function<void(indexstore_unit_event_notification_t)>
+indexstore_unit_event_handler_t;
+
+INDEXSTORE_PUBLIC void indexstore_store_set_unit_event_handler(
+    indexstore_t store,
+    llvm::function_ref<void(indexstore_unit_event_notification_t)> handler);
 #endif
 
 typedef struct {
@@ -294,10 +309,12 @@ typedef void *indexstore_occurrence_t;
 INDEXSTORE_PUBLIC indexstore_symbol_t
 indexstore_occurrence_get_symbol(indexstore_occurrence_t occur);
 
-#if INDEXSTORE_HAS_BLOCKS
 INDEXSTORE_PUBLIC bool indexstore_occurrence_relations_apply(
     indexstore_occurrence_t occur,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^applier)(indexstore_symbol_relation_t relation));
+#else
+    llvm::function_ref<bool(indexstore_symbol_relation_t)> applier);
 #endif
 
 INDEXSTORE_PUBLIC uint64_t
@@ -315,7 +332,6 @@ INDEXSTORE_PUBLIC indexstore_record_reader_t indexstore_record_reader_create(
 INDEXSTORE_PUBLIC void
 indexstore_record_reader_dispose(indexstore_record_reader_t reader);
 
-#if INDEXSTORE_HAS_BLOCKS
 /// Goes through the symbol data and passes symbols to \c receiver, for the
 /// symbol data that \c filter returns true on.
 ///
@@ -323,23 +339,40 @@ indexstore_record_reader_dispose(indexstore_record_reader_t reader);
 /// interested in.
 INDEXSTORE_PUBLIC bool indexstore_record_reader_search_symbols(
     indexstore_record_reader_t reader,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^filter)(indexstore_symbol_t symbol, bool *stop),
     void (^receiver)(indexstore_symbol_t symbol));
+#else
+    llvm::function_ref<bool(indexstore_symbol_t, bool *)> filter,
+    llvm::function_ref<void(indexstore_symbol_t)> receiver);
+#endif
 
 /// \param nocache if true, avoids allocating memory for the symbols.
 /// Useful when the caller does not intend to keep \c indexstore_record_reader_t
 /// for more queries.
 INDEXSTORE_PUBLIC bool indexstore_record_reader_symbols_apply(
     indexstore_record_reader_t reader, bool nocache,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^applier)(indexstore_symbol_t symbol));
+#else
+    llvm::function_ref<bool(indexstore_symbol_t)> applier);
+#endif
 
 INDEXSTORE_PUBLIC bool indexstore_record_reader_occurrences_apply(
     indexstore_record_reader_t reader,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^applier)(indexstore_occurrence_t occur));
+#else
+    llvm::function_ref<bool(indexstore_occurrence_t)> applier);
+#endif
 
 INDEXSTORE_PUBLIC bool indexstore_record_reader_occurrences_in_line_range_apply(
     indexstore_record_reader_t reader, unsigned line_start, unsigned line_count,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^applier)(indexstore_occurrence_t occur));
+#else
+    llvm::function_ref<bool(indexstore_occurrence_t)> applier);
+#endif
 
 /// \param symbols if non-zero \c symbols_count, indicates the list of symbols
 /// that we want to get occurrences for. An empty array indicates that we want
@@ -349,7 +382,10 @@ INDEXSTORE_PUBLIC bool indexstore_record_reader_occurrences_of_symbols_apply(
     indexstore_record_reader_t reader, indexstore_symbol_t *symbols,
     size_t symbols_count, indexstore_symbol_t *related_symbols,
     size_t related_symbols_count,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^applier)(indexstore_occurrence_t occur));
+#else
+    llvm::function_ref<bool(indexstore_occurrence_t)> applier);
 #endif
 
 typedef void *indexstore_unit_reader_t;
@@ -438,15 +474,20 @@ indexstore_unit_include_get_target_path(indexstore_unit_include_t dep);
 INDEXSTORE_PUBLIC unsigned
 indexstore_unit_include_get_source_line(indexstore_unit_include_t dep);
 
-#if INDEXSTORE_HAS_BLOCKS
 INDEXSTORE_PUBLIC bool indexstore_unit_reader_dependencies_apply(
     indexstore_unit_reader_t reader,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^applier)(indexstore_unit_dependency_t dep));
+#else
+    llvm::function_ref<bool(indexstore_unit_dependency_t)> applier);
+#endif
 
 INDEXSTORE_PUBLIC bool indexstore_unit_reader_includes_apply(
     indexstore_unit_reader_t reader,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^applier)(indexstore_unit_include_t include));
-
+#else
+    llvm::function_ref<bool(indexstore_unit_include_t)> applier);
 #endif
 
 INDEXSTORE_END_DECLS

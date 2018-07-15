@@ -23,9 +23,6 @@ else()
   set(output_name "IndexStore")
 endif()
 
-# FIXME: needs to be ported to non-Apple platforms.
-if(APPLE)
-
 add_clang_library(IndexStore ${ENABLE_SHARED} ${ENABLE_STATIC}
   OUTPUT_NAME ${output_name}
   ${SOURCES}
@@ -46,7 +43,7 @@ if(ENABLE_SHARED)
     set_target_properties(IndexStore
       PROPERTIES
       VERSION ${INDEXSTORE_LIBRARY_VERSION}
-      DEFINE_SYMBOL _CINDEX_LIB_)
+      DEFINE_SYMBOL _INDEXSTORE_LIB_)
   elseif(APPLE)
     set(INDEXSTORE_LINK_FLAGS " -Wl,-compatibility_version -Wl,1")
     set(INDEXSTORE_LINK_FLAGS "${INDEXSTORE_LINK_FLAGS} -Wl,-current_version -Wl,${INDEXSTORE_LIBRARY_VERSION}")
@@ -62,7 +59,7 @@ if(ENABLE_SHARED)
     set_target_properties(IndexStore
       PROPERTIES
       VERSION ${INDEXSTORE_LIBRARY_VERSION}
-      DEFINE_SYMBOL _CINDEX_LIB_)
+      DEFINE_SYMBOL _INDEXSTORE_LIB_)
   endif()
 endif()
 
@@ -91,4 +88,3 @@ install(DIRECTORY ../../include/indexstore
   PATTERN "*.h"
   PATTERN ".svn" EXCLUDE
   )
-endif()

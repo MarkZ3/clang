@@ -86,14 +86,15 @@ public:
   uint64_t getRoles() { return indexstore_occurrence_get_roles(obj); }
 
   bool foreachRelation(llvm::function_ref<bool(IndexSymbolRelation)> receiver) {
-#if INDEXSTORE_HAS_BLOCKS
     return indexstore_occurrence_relations_apply(
-        obj, ^bool(indexstore_symbol_relation_t sym_rel) {
+        obj,
+#if INDEXSTORE_HAS_BLOCKS
+        ^bool(indexstore_symbol_relation_t sym_rel) {
+#else
+        [receiver](indexstore_symbol_relation_t sym_rel) {
+#endif
           return receiver(sym_rel);
         });
-#else
-    return false;
-#endif
   }
 
   std::pair<unsigned, unsigned> getLineCol() {
@@ -141,14 +142,15 @@ public:
 
   bool foreachUnit(bool sorted,
                    llvm::function_ref<bool(StringRef unitName)> receiver) {
-#if INDEXSTORE_HAS_BLOCKS
     return indexstore_store_units_apply(
-        obj, sorted, ^bool(indexstore_string_ref_t unit_name) {
+        obj, sorted,
+#if INDEXSTORE_HAS_BLOCKS
+        ^bool(indexstore_string_ref_t unit_name) {
+#else
+        [receiver](indexstore_string_ref_t unit_name) {
+#endif
           return receiver(stringFromIndexStoreStringRef(unit_name));
         });
-#else
-    return false;
-#endif
   }
 
   class UnitEvent {
@@ -215,17 +217,20 @@ public:
   typedef std::function<void(UnitEventNotification)> UnitEventHandler;
 
   void setUnitEventHandler(UnitEventHandler handler) {
-#if INDEXSTORE_HAS_BLOCKS
     if (!handler) {
       indexstore_store_set_unit_event_handler(obj, nullptr);
       return;
     }
 
     indexstore_store_set_unit_event_handler(
-        obj, ^(indexstore_unit_event_notification_t evt_note) {
+        obj,
+#if INDEXSTORE_HAS_BLOCKS
+        ^(indexstore_unit_event_notification_t evt_note) {
+#else
+        [handler](indexstore_unit_event_notification_t evt_note) {
+#endif
           handler(UnitEventNotification(evt_note));
         });
-#endif
   }
 
   bool startEventListening(bool waitInitialSync, std::string &error) {
@@ -332,20 +337,26 @@ public:
           receiver(symbol);
         });
 #else
-    return false;
+    return indexstore_record_reader_search_symbols(
+        obj,
+        [filter](indexstore_symbol_t symbol, bool *stop) {
+          return filter(symbol, *stop);
+        },
+        [receiver](indexstore_symbol_t symbol) { receiver(symbol); });
 #endif
   }
 
   bool foreachSymbol(bool noCache,
                      llvm::function_ref<bool(IndexRecordSymbol)> receiver) {
-#if INDEXSTORE_HAS_BLOCKS
     return indexstore_record_reader_symbols_apply(
-        obj, noCache, ^bool(indexstore_symbol_t sym) {
+        obj, noCache,
+#if INDEXSTORE_HAS_BLOCKS
+        ^bool(indexstore_symbol_t sym) {
+#else
+        [receiver](indexstore_symbol_t sym) {
+#endif
           return receiver(sym);
         });
-#else
-    return false;
-#endif
   }
 
   /// \param DeclsFilter if non-empty indicates the list of decls that we want
@@ -356,7 +367,6 @@ public:
   foreachOccurrence(ArrayRef<IndexRecordSymbol> symbolsFilter,
                     ArrayRef<IndexRecordSymbol> relatedSymbolsFilter,
                     llvm::function_ref<bool(IndexRecordOccurrence)> receiver) {
-#if INDEXSTORE_HAS_BLOCKS
     llvm::SmallVector<indexstore_symbol_t, 16> c_symbolsFilter;
     c_symbolsFilter.reserve(symbolsFilter.size());
     for (IndexRecordSymbol sym : symbolsFilter) {
@@ -367,27 +377,30 @@ public:
     for (IndexRecordSymbol sym : relatedSymbolsFilter) {
       c_relatedSymbolsFilter.push_back(sym.obj);
     }
+
     return indexstore_record_reader_occurrences_of_symbols_apply(
         obj, c_symbolsFilter.data(), c_symbolsFilter.size(),
         c_relatedSymbolsFilter.data(), c_relatedSymbolsFilter.size(),
+#if INDEXSTORE_HAS_BLOCKS
         ^bool(indexstore_occurrence_t occur) {
+#else
+        [receiver](indexstore_occurrence_t occur) {
+#endif
           return receiver(occur);
         });
-#else
-    return false;
-#endif
   }
 
   bool
   foreachOccurrence(llvm::function_ref<bool(IndexRecordOccurrence)> receiver) {
-#if INDEXSTORE_HAS_BLOCKS
     return indexstore_record_reader_occurrences_apply(
-        obj, ^bool(indexstore_occurrence_t occur) {
+        obj,
+#if INDEXSTORE_HAS_BLOCKS
+        ^bool(indexstore_occurrence_t occur) {
+#else
+        [receiver](indexstore_occurrence_t occur) {
+#endif
           return receiver(occur);
         });
-#else
-    return false;
-#endif
   }
 
   bool foreachOccurrenceInLineRange(
@@ -399,7 +412,9 @@ public:
           return receiver(occur);
         });
 #else
-    return false;
+    return indexstore_record_reader_occurrences_in_line_range_apply(
+        obj, lineStart, lineEnd,
+        [receiver](indexstore_occurrence_t occur) { return receiver(occur); });
 #endif
   }
 };
@@ -541,25 +556,27 @@ public:
 
   bool
   foreachDependency(llvm::function_ref<bool(IndexUnitDependency)> receiver) {
-#if INDEXSTORE_HAS_BLOCKS
     return indexstore_unit_reader_dependencies_apply(
-        obj, ^bool(indexstore_unit_dependency_t dep) {
+        obj,
+#if INDEXSTORE_HAS_BLOCKS
+        ^bool(indexstore_unit_dependency_t dep) {
+#else
+        [receiver](indexstore_unit_dependency_t dep) {
+#endif
           return receiver(dep);
         });
-#else
-    return false;
-#endif
   }
 
   bool foreachInclude(llvm::function_ref<bool(IndexUnitInclude)> receiver) {
-#if INDEXSTORE_HAS_BLOCKS
     return indexstore_unit_reader_includes_apply(
-        obj, ^bool(indexstore_unit_include_t inc) {
+        obj,
+#if INDEXSTORE_HAS_BLOCKS
+        ^bool(indexstore_unit_include_t inc) {
+#else
+        [receiver](indexstore_unit_include_t inc) {
+#endif
           return receiver(inc);
         });
-#else
-    return false;
-#endif
   }
 };
 

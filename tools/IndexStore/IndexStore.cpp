@@ -22,7 +22,10 @@
 #include "llvm/ADT/Optional.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/Support/Chrono.h"
+
+#if INDEXSTORE_HAS_BLOCKS
 #include <Block.h>
+#endif
 
 using namespace clang;
 using namespace clang::index;
@@ -81,10 +84,13 @@ void indexstore_store_dispose(indexstore_t store) {
   delete static_cast<IndexDataStore *>(store);
 }
 
-#if INDEXSTORE_HAS_BLOCKS
 bool indexstore_store_units_apply(
     indexstore_t c_store, unsigned sorted,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^applier)(indexstore_string_ref_t unit_name)) {
+#else
+    llvm::function_ref<bool(indexstore_string_ref_t)> applier) {
+#endif
   IndexDataStore *store = static_cast<IndexDataStore *>(c_store);
   return store->foreachUnitName(sorted, [&](StringRef unitName) -> bool {
     return applier(toIndexStoreString(unitName));
@@ -158,12 +164,11 @@ void indexstore_store_set_unit_event_handler(
 
   public:
     BlockWrapper(indexstore_unit_event_handler_t handler) {
-      blk_handler = Block_copy(handler);
+      blk_handler = handler;
     }
     BlockWrapper(const BlockWrapper &other) {
-      blk_handler = Block_copy(other.blk_handler);
+      blk_handler = other.blk_handler;
     }
-    ~BlockWrapper() { Block_release(blk_handler); }
 
     void operator()(indexstore_unit_event_notification_t evt_note) const {
       blk_handler(evt_note);
@@ -177,7 +182,6 @@ void indexstore_store_set_unit_event_handler(
         handler(&evtNote);
       });
 }
-#endif
 
 bool indexstore_store_start_unit_event_listening(
     indexstore_t c_store, indexstore_unit_event_listen_options_t *client_opts,
@@ -286,10 +290,13 @@ indexstore_occurrence_get_symbol(indexstore_occurrence_t occur) {
   return (indexstore_symbol_t) static_cast<IndexRecordOccurrence *>(occur)->Dcl;
 }
 
-#if INDEXSTORE_HAS_BLOCKS
 bool indexstore_occurrence_relations_apply(
     indexstore_occurrence_t occur,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^applier)(indexstore_symbol_relation_t symbol_rel)) {
+#else
+    llvm::function_ref<bool(indexstore_symbol_relation_t)> applier) {
+#endif
   auto *recOccur = static_cast<IndexRecordOccurrence *>(occur);
   for (auto &rel : recOccur->Relations) {
     if (!applier(&rel))
@@ -297,7 +304,6 @@ bool indexstore_occurrence_relations_apply(
   }
   return true;
 }
-#endif
 
 uint64_t indexstore_occurrence_get_roles(indexstore_occurrence_t occur) {
   return static_cast<IndexRecordOccurrence *>(occur)->Roles;
@@ -335,7 +341,6 @@ void indexstore_record_reader_dispose(indexstore_record_reader_t rdr) {
   delete reader;
 }
 
-#if INDEXSTORE_HAS_BLOCKS
 /// Goes through the symbol data and passes symbols to \c receiver, for the
 /// symbol data that \c filter returns true on.
 ///
@@ -343,8 +348,13 @@ void indexstore_record_reader_dispose(indexstore_record_reader_t rdr) {
 /// interested in.
 bool indexstore_record_reader_search_symbols(
     indexstore_record_reader_t rdr,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^filter)(indexstore_symbol_t symbol, bool *stop),
     void (^receiver)(indexstore_symbol_t symbol)) {
+#else
+    llvm::function_ref<bool(indexstore_symbol_t, bool *)> filter,
+    llvm::function_ref<void(indexstore_symbol_t)> receiver) {
+#endif
   auto *reader = static_cast<IndexRecordReader *>(rdr);
 
   auto filterFn =
@@ -362,7 +372,11 @@ bool indexstore_record_reader_search_symbols(
 
 bool indexstore_record_reader_symbols_apply(
     indexstore_record_reader_t rdr, bool nocache,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^applier)(indexstore_symbol_t symbol)) {
+#else
+    llvm::function_ref<bool(indexstore_symbol_t)> applier) {
+#endif
   auto *reader = static_cast<IndexRecordReader *>(rdr);
   auto receiverFn = [&](const IndexRecordDecl *D) -> bool {
     return applier((indexstore_symbol_t)D);
@@ -372,7 +386,11 @@ bool indexstore_record_reader_symbols_apply(
 
 bool indexstore_record_reader_occurrences_apply(
     indexstore_record_reader_t rdr,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^applier)(indexstore_occurrence_t occur)) {
+#else
+    llvm::function_ref<bool(indexstore_occurrence_t)> applier) {
+#endif
   auto *reader = static_cast<IndexRecordReader *>(rdr);
   auto receiverFn = [&](const IndexRecordOccurrence &RO) -> bool {
     return applier((indexstore_occurrence_t)&RO);
@@ -382,7 +400,11 @@ bool indexstore_record_reader_occurrences_apply(
 
 bool indexstore_record_reader_occurrences_in_line_range_apply(
     indexstore_record_reader_t rdr, unsigned line_start, unsigned line_count,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^applier)(indexstore_occurrence_t occur)) {
+#else
+    llvm::function_ref<bool(indexstore_occurrence_t)> applier) {
+#endif
   auto *reader = static_cast<IndexRecordReader *>(rdr);
   auto receiverFn = [&](const IndexRecordOccurrence &RO) -> bool {
     return applier((indexstore_occurrence_t)&RO);
@@ -399,7 +421,11 @@ bool indexstore_record_reader_occurrences_of_symbols_apply(
     indexstore_record_reader_t rdr, indexstore_symbol_t *symbols,
     size_t symbols_count, indexstore_symbol_t *related_symbols,
     size_t related_symbols_count,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^applier)(indexstore_occurrence_t occur)) {
+#else
+    llvm::function_ref<bool(indexstore_occurrence_t)> applier) {
+#endif
   auto *reader = static_cast<IndexRecordReader *>(rdr);
   auto receiverFn = [&](const IndexRecordOccurrence &RO) -> bool {
     return applier((indexstore_occurrence_t)&RO);
@@ -408,7 +434,6 @@ bool indexstore_record_reader_occurrences_of_symbols_apply(
       {(IndexRecordDecl **)symbols, symbols_count},
       {(IndexRecordDecl **)related_symbols, related_symbols_count}, receiverFn);
 }
-#endif
 
 size_t indexstore_store_get_unit_name_from_output_path(indexstore_t store,
                                                        const char *output_path,
@@ -417,7 +442,7 @@ size_t indexstore_store_get_unit_name_from_output_path(indexstore_t store,
   SmallString<256> unitName;
   IndexUnitWriter::getUnitNameForAbsoluteOutputFile(output_path, unitName);
   size_t nameLen = unitName.size();
-  strlcpy(name_buf, unitName.c_str(), buf_size);
+  strncpy(name_buf, unitName.c_str(), buf_size);
   return nameLen;
 }
 
@@ -614,10 +639,13 @@ indexstore_unit_include_get_source_line(indexstore_unit_include_t c_inc) {
   return inc->SourceLine;
 }
 
-#if INDEXSTORE_HAS_BLOCKS
 bool indexstore_unit_reader_dependencies_apply(
     indexstore_unit_reader_t rdr,
+#if INDEXSTORE_HAS_BLOCKS
     bool (^applier)(indexstore_unit_dependency_t)) {
+#else
+    llvm::function_ref<bool(indexstore_unit_dependency_t)> applier) {
+#endif
   auto reader = static_cast<IndexUnitReader *>(rdr);
   return reader->foreachDependency(
       [&](const IndexUnitReader::DependencyInfo &depInfo) -> bool {
@@ -626,11 +654,15 @@ bool indexstore_unit_reader_dependencies_apply(
 }
 
 bool indexstore_unit_reader_includes_apply(
-    indexstore_unit_reader_t rdr, bool (^applier)(indexstore_unit_include_t)) {
+    indexstore_unit_reader_t rdr,
+#if INDEXSTORE_HAS_BLOCKS
+    bool (^applier)(indexstore_unit_include_t)) {
+#else
+    llvm::function_ref<bool(indexstore_unit_include_t)> applier) {
+#endif
   auto reader = static_cast<IndexUnitReader *>(rdr);
   return reader->foreachInclude(
       [&](const IndexUnitReader::IncludeInfo &incInfo) -> bool {
         return applier((void *)&incInfo);
       });
 }
-#endif

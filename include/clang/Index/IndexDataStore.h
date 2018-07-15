@@ -14,6 +14,8 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringRef.h"
+
+#include <ctime>
 #include <functional>
 #include <memory>
 #include <string>
