@@ -24,6 +24,10 @@ namespace clang {
 
 namespace index {
 
+// Hack so that we can use the same Clangd branch with Clang that might or
+// might not have the libIndexStore patches
+#define HAS_SYS_FILE_PARAM
+
 class IndexDataConsumer {
 public:
   struct ASTNodeInfo {
